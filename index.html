@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPOT - Sitting + Bot</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      margin: 0; 
+      background: #f4f4f4; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+    }
+    
+    header { 
+      width: 100%; 
+      background: #ddd; 
+      padding: 20px; 
+      font-size: 1.8rem; 
+      font-weight: bold; 
+      color: #555; 
+    }
+    
+    .controls, .add-form { 
+      margin: 10px; 
+      display: flex; 
+      gap: 5px; 
+    }
+    
+    input, select, button { 
+      padding: 8px; 
+      border: 1px solid #ccc; 
+      border-radius: 4px; 
+      font-size: 1rem; 
+      transition: all 0.2s ease;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: #0078d7;
+      box-shadow: 0 0 0 2px rgba(0, 120, 215, 0.2);
+    }
+    
+    button { 
+      background: #0078d7; 
+      color: #fff; 
+      border: none; 
+      cursor: pointer; 
+      transition: all 0.2s ease;
+    }
+    
+    button:hover { 
+      background: #005fa3; 
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    .layout { 
+      background: #fff; 
+      border: 2px solid #555; 
+      padding: 20px; 
+      display: grid; 
+      grid-template-columns: repeat(3, 200px); 
+      gap: 40px; 
+    }
+    
+    .table { 
+      background: #e0e0e0; 
+      width: 200px; 
+      height: 100px; 
+      position: relative; 
+      font-weight: bold; 
+      color: #555; 
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+    
+    .table:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .table-label { 
+      position: absolute; 
+      width: 100%; 
+      text-align: center; 
+      top: 40%; 
+    }
+    
+    .chair { 
+      width: 25px; 
+      height: 25px; 
+      border-radius: 50%; 
+      position: absolute; 
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .chair.unoccupied { 
+      background: #d3cfcf; 
+      border: 2px dashed #aaa;
+    }
+    
+    .chair.unoccupied:hover {
+      background: #c5c1c1;
+      transform: scale(1.1);
+    }
+    
+    .chair.occupied { 
+      background: #4b2e2e; 
+      border: 2px solid #333;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+    
+    .chair.occupied:hover {
+      transform: scale(1.15);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 10;
+    }
+    
+    .chair img { 
+      width: 100%; 
+      height: 100%; 
+      border-radius: 50%; 
+      object-fit: cover;
+    }
+    
+    .chair.top-left { top: -15px; left: 20px; }
+    .chair.top-right { top: -15px; right: 20px; }
+    .chair.bottom-left { bottom: -15px; left: 20px; }
+    .chair.bottom-right { bottom: -15px; right: 20px; }
+    
+    .profile-card { 
+      display: none; 
+      position: absolute; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff; 
+      padding: 16px; 
+      border-radius: 12px; 
+      font-size: 0.9rem; 
+      bottom: 120%; 
+      left: 50%; 
+      transform: translateX(-50%);
+      white-space: nowrap; 
+      z-index: 1000;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      min-width: 220px;
+      opacity: 0;
+      animation: fadeInUp 0.3s ease forwards;
+    }
+    
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+    
+    .profile-card::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 8px solid transparent;
+      border-top-color: #667eea;
+    }
+    
+    .chair:hover .profile-card { 
+      display: block; 
+    }
+    
+    .profile-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .profile-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      margin-right: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      object-fit: cover;
+    }
+    
+    .profile-name {
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin: 0;
+    }
+    
+    .profile-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    
+    .profile-row {
+      display: flex;
+      align-items: center;
+      font-size: 0.85rem;
+    }
+    
+    .profile-icon {
+      width: 16px;
+      height: 16px;
+      margin-right: 8px;
+      opacity: 0.8;
+    }
+    
+    .team-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .team-design { background: rgba(255, 193, 7, 0.3); color: #fff; }
+    .team-development { background: rgba(40, 167, 69, 0.3); color: #fff; }
+    .team-marketing { background: rgba(220, 53, 69, 0.3); color: #fff; }
+    
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #888;
+      font-style: italic;
+    }
+    
+    .loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    
+    .search-highlight {
+      background: yellow;
+      padding: 1px 2px;
+      border-radius: 2px;
+    }
+    
+    /* Enhanced form styling */
+    .add-form {
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      margin: 20px;
+    }
+    
+    .success-message {
+      background: #d4edda;
+      color: #155724;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px;
+      border: 1px solid #c3e6cb;
+      display: none;
+    }
+    
+    .error-message {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px;
+      border: 1px solid #f5c6cb;
+      display: none;
+    }
+
+    /* Advanced Filters Styling */
+    .filter-toggle {
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 0.9rem;
+    }
+
+    .filter-toggle:hover {
+      background: #5a6268;
+    }
+
+    .filter-toggle.active {
+      background: #0078d7;
+    }
+
+    .advanced-filters {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      display: none;
+      max-width: 800px;
+    }
+
+    .advanced-filters.show {
+      display: block;
+      animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .filter-section {
+      margin-bottom: 20px;
+    }
+
+    .filter-section h4 {
+      margin: 0 0 10px 0;
+      color: #333;
+      font-size: 1rem;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 5px;
+    }
+
+    .filter-checkboxes {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 8px;
+    }
+
+    .filter-checkbox {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: #f8f9fa;
+    }
+
+    .filter-checkbox:hover {
+      background: #e9ecef;
+      border-color: #0078d7;
+    }
+
+    .filter-checkbox.selected {
+      background: #e3f2fd;
+      border-color: #0078d7;
+      color: #0078d7;
+    }
+
+    .filter-checkbox input[type="checkbox"] {
+      margin-right: 8px;
+      cursor: pointer;
+    }
+
+    .filter-checkbox label {
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .filter-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding-top: 15px;
+      border-top: 1px solid #eee;
+    }
+
+    .clear-btn {
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .clear-btn:hover {
+      background: #5a6268;
+    }
+
+    .apply-btn {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .apply-btn:hover {
+      background: #218838;
+    }
+
+    .filter-count {
+      background: #0078d7;
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: auto;
+    }
+  </style>
+</head>
+<body>
+  <header>Spot</header>
+  
+  <div class="success-message" id="successMessage"></div>
+  <div class="error-message" id="errorMessage"></div>
+  
+  <div class="controls">
+    <input type="text" id="search" placeholder="🔍 Search employees...">
+    <button id="filterToggle" class="filter-toggle">🔽 Filters</button>
+  </div>
+
+  <div class="advanced-filters" id="advancedFilters">
+    <div class="filter-section">
+      <h4>👥 Team</h4>
+      <div class="filter-checkboxes" id="teamCheckboxes">
+        <!-- Team checkboxes will be generated dynamically -->
+      </div>
+    </div>
+    <div class="filter-section">
+      <h4>📋 Project</h4>
+      <div class="filter-checkboxes" id="projectCheckboxes">
+        <!-- Project checkboxes will be generated dynamically -->
+      </div>
+    </div>
+    <div class="filter-actions">
+      <button id="clearFilters" class="clear-btn">Clear All</button>
+      <button id="applyFilters" class="apply-btn">Apply Filters</button>
+    </div>
+  </div>
+
+  <div class="add-form">
+    <input type="text" id="newName" placeholder="👤 Full Name">
+    <input type="text" id="newProject" placeholder="📋 Current Project">
+    <input type="text" id="newAvatar" placeholder="🖼️ Avatar URL (optional)">
+    <select id="newTeam">
+      <option value="Design">🎨 Design</option>
+      <option value="Development">💻 Development</option>
+      <option value="Marketing">📢 Marketing</option>
+    </select>
+    <button id="addBtn">✅ Add Member</button>
+  </div>
+
+  <div class="layout" id="officeLayout"></div>
+
+  <script>
+    const chairs = ['top-left','top-right','bottom-left','bottom-right'];
+    const employees = [
+      { table: 1, seat: 'top-left', name: 'Alice Johnson', team: 'Design', project: 'Website Redesign', avatar: 'https://via.placeholder.com/40/667eea/ffffff?text=AJ' },
+      { table: 2, seat: 'top-right', name: 'Bob Smith', team: 'Development', project: 'Mobile App', avatar: 'https://via.placeholder.com/40/28a745/ffffff?text=BS' },
+      { table: 3, seat: 'bottom-left', name: 'Charlie Brown', team: 'Marketing', project: 'Ad Campaign', avatar: 'https://via.placeholder.com/40/dc3545/ffffff?text=CB' },
+      { table: 4, seat: 'bottom-right', name: 'Diana Prince', team: 'Development', project: 'API Integration', avatar: 'https://via.placeholder.com/40/28a745/ffffff?text=DP' },
+      { table: 5, seat: 'top-left', name: 'Eve Wilson', team: 'Design', project: 'Brand Kit', avatar: 'https://via.placeholder.com/40/667eea/ffffff?text=EW' }
+    ];
+
+    const layout = document.getElementById('officeLayout');
+    const searchInput = document.getElementById('search');
+    const successMessage = document.getElementById('successMessage');
+    const errorMessage = document.getElementById('errorMessage');
+    const filterToggle = document.getElementById('filterToggle');
+    const advancedFilters = document.getElementById('advancedFilters');
+    const teamCheckboxes = document.getElementById('teamCheckboxes');
+    const projectCheckboxes = document.getElementById('projectCheckboxes');
+    const clearFiltersBtn = document.getElementById('clearFilters');
+    const applyFiltersBtn = document.getElementById('applyFilters');
+
+    let activeFilters = {
+      teams: [],
+      projects: []
+    };
+
+    function showMessage(message, isSuccess = true) {
+      const messageEl = isSuccess ? successMessage : errorMessage;
+      messageEl.textContent = message;
+      messageEl.style.display = 'block';
+      setTimeout(() => {
+        messageEl.style.display = 'none';
+      }, 3000);
+    }
+
+    function getAvailableSeat(team) {
+      for (let t = 1; t <= 6; t++) {
+        if ((team === 'Marketing' && (t===3||t===4)) || 
+            (team==='Design'&&(t===1||t===2)) || 
+            (team==='Development'&&(t===5||t===6))) {
+          for (const pos of chairs) {
+            if (!employees.find(e => e.table===t && e.seat===pos)) {
+              return {table: t, seat: pos};
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    function highlightText(text, query) {
+      if (!query) return text;
+      const regex = new RegExp(`(${query})`, 'gi');
+      return text.replace(regex, '<span class="search-highlight">$1</span>');
+    }
+
+    function getTeamBadgeClass(team) {
+      return `team-${team.toLowerCase()}`;
+    }
+
+    function generateAvatar(name) {
+      const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
+      const colors = ['667eea', '28a745', 'dc3545', 'ffc107', '17a2b8'];
+      const color = colors[name.length % colors.length];
+      return `https://via.placeholder.com/40/${color}/ffffff?text=${initials}`;
+    }
+
+    function generateFilterCheckboxes() {
+      // Generate team checkboxes
+      const uniqueTeams = [...new Set(employees.map(emp => emp.team))];
+      teamCheckboxes.innerHTML = '';
+      uniqueTeams.forEach(team => {
+        const count = employees.filter(emp => emp.team === team).length;
+        const checkbox = document.createElement('div');
+        checkbox.className = 'filter-checkbox';
+        checkbox.innerHTML = `
+          <input type="checkbox" id="team-${team}" value="${team}">
+          <label for="team-${team}">
+            <span class="team-badge ${getTeamBadgeClass(team)}">${team}</span>
+            <span class="filter-count">${count}</span>
+          </label>
+        `;
+        teamCheckboxes.appendChild(checkbox);
+      });
+
+      // Generate project checkboxes
+      const uniqueProjects = [...new Set(employees.map(emp => emp.project))];
+      projectCheckboxes.innerHTML = '';
+      uniqueProjects.forEach(project => {
+        const count = employees.filter(emp => emp.project === project).length;
+        const checkbox = document.createElement('div');
+        checkbox.className = 'filter-checkbox';
+        checkbox.innerHTML = `
+          <input type="checkbox" id="project-${project.replace(/\s+/g, '-')}" value="${project}">
+          <label for="project-${project.replace(/\s+/g, '-')}">
+            📋 ${project}
+            <span class="filter-count">${count}</span>
+          </label>
+        `;
+        projectCheckboxes.appendChild(checkbox);
+      });
+
+      // Add event listeners to checkboxes
+      document.querySelectorAll('.filter-checkbox input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', updateFilterSelection);
+      });
+    }
+
+    function updateFilterSelection() {
+      document.querySelectorAll('.filter-checkbox').forEach(box => {
+        const checkbox = box.querySelector('input[type="checkbox"]');
+        if (checkbox.checked) {
+          box.classList.add('selected');
+        } else {
+          box.classList.remove('selected');
+        }
+      });
+    }
+
+    function createProfileCard(emp, filterText) {
+      const teamClass = getTeamBadgeClass(emp.team);
+      return `
+        <div class="profile-card">
+          <div class="profile-header">
+            <img src="${emp.avatar}" alt="${emp.name}" class="profile-avatar">
+            <div class="profile-name">${highlightText(emp.name, filterText)}</div>
+          </div>
+          <div class="profile-info">
+            <div class="profile-row">
+              <span>👥</span>
+              <span class="team-badge ${teamClass}">${emp.team}</span>
+            </div>
+            <div class="profile-row">
+              <span>📋</span>
+              <span>${emp.project}</span>
+            </div>
+            <div class="profile-row">
+              <span>🪑</span>
+              <span>Table ${emp.table} • ${emp.seat.replace('-', ' ')}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTables(filterText = '') {
+      layout.innerHTML = '';
+      layout.classList.add('loading');
+      
+      setTimeout(() => {
+        let hasResults = false;
+        
+        for (let t = 1; t <= 6; t++) {
+          const table = document.createElement('div');
+          table.className = 'table';
+          const label = document.createElement('div');
+          label.className = 'table-label';
+          label.textContent = `Table ${t}`;
+          table.appendChild(label);
+
+          let tableHasOccupant = false;
+
+          chairs.forEach(pos => {
+            const chair = document.createElement('div');
+            chair.className = 'chair';
+            const emp = employees.find(e => e.table === t && e.seat === pos);
+            
+            if (emp) {
+              const matchesSearch = emp.name.toLowerCase().includes(filterText.toLowerCase());
+              const matchesTeamFilter = activeFilters.teams.length === 0 || activeFilters.teams.includes(emp.team);
+              const matchesProjectFilter = activeFilters.projects.length === 0 || activeFilters.projects.includes(emp.project);
+              
+              if (matchesSearch && matchesTeamFilter && matchesProjectFilter) {
+                chair.classList.add('occupied');
+                chair.innerHTML = `<img src="${emp.avatar}" alt="${emp.name}">${createProfileCard(emp, filterText)}`;
+                tableHasOccupant = true;
+                hasResults = true;
+              } else {
+                chair.classList.add('unoccupied');
+              }
+            } else {
+              chair.classList.add('unoccupied');
+            }
+            
+            chair.classList.add(pos);
+            table.appendChild(chair);
+          });
+
+          if (tableHasOccupant || (activeFilters.teams.length === 0 && activeFilters.projects.length === 0 && !filterText)) {
+            layout.appendChild(table);
+          }
+        }
+
+        if (!hasResults && (filterText || activeFilters.teams.length > 0 || activeFilters.projects.length > 0)) {
+          const emptyState = document.createElement('div');
+          emptyState.className = 'empty-state';
+          emptyState.innerHTML = `
+            <div style="font-size: 3rem; margin-bottom: 16px;">🔍</div>
+            <div>No employees found matching your criteria</div>
+            <div style="font-size: 0.9rem; margin-top: 8px; opacity: 0.7;">
+              Try adjusting your search or filter settings
+            </div>
+          `;
+          layout.appendChild(emptyState);
+        }
+
+        updateFilterToggleState();
+        layout.classList.remove('loading');
+      }, 100);
+    }
+
+    function updateFilterToggleState() {
+      const totalActiveFilters = activeFilters.teams.length + activeFilters.projects.length;
+      if (totalActiveFilters > 0) {
+        filterToggle.textContent = `🔽 Filters (${totalActiveFilters})`;
+        filterToggle.classList.add('active');
+      } else {
+        filterToggle.textContent = '🔽 Filters';
+        filterToggle.classList.remove('active');
+      }
+    }
+
+    document.getElementById('addBtn').addEventListener('click', () => {
+      const name = document.getElementById('newName').value.trim();
+      const project = document.getElementById('newProject').value.trim();
+      const avatarUrl = document.getElementById('newAvatar').value.trim();
+      const team = document.getElementById('newTeam').value;
+      
+      if (!name || !project) { 
+        showMessage('Please enter both name and project details', false);
+        return; 
+      }
+      
+      if (employees.find(e => e.name.toLowerCase() === name.toLowerCase())) {
+        showMessage('An employee with this name already exists', false);
+        return;
+      }
+      
+      const seatInfo = getAvailableSeat(team);
+      if (!seatInfo) { 
+        showMessage(`No available seats for ${team} team`, false);
+        return; 
+      }
+      
+      const avatar = avatarUrl || generateAvatar(name);
+      employees.push({ 
+        table: seatInfo.table, 
+        seat: seatInfo.seat, 
+        name, 
+        team, 
+        project, 
+        avatar 
+      });
+      
+      // Clear form
+      document.getElementById('newName').value = '';
+      document.getElementById('newProject').value = '';
+      document.getElementById('newAvatar').value = '';
+      
+      showMessage(`${name} has been added to ${team} team!`);
+      generateFilterCheckboxes(); // Regenerate filters with new data
+      renderTables(searchInput.value);
+    });
+
+    // Filter toggle functionality
+    filterToggle.addEventListener('click', () => {
+      if (advancedFilters.classList.contains('show')) {
+        advancedFilters.classList.remove('show');
+        filterToggle.textContent = filterToggle.textContent.replace('🔼', '🔽');
+      } else {
+        advancedFilters.classList.add('show');
+        filterToggle.textContent = filterToggle.textContent.replace('🔽', '🔼');
+        generateFilterCheckboxes();
+      }
+    });
+
+    // Clear filters
+    clearFiltersBtn.addEventListener('click', () => {
+      activeFilters.teams = [];
+      activeFilters.projects = [];
+      document.querySelectorAll('.filter-checkbox input[type="checkbox"]').forEach(cb => {
+        cb.checked = false;
+      });
+      updateFilterSelection();
+      renderTables(searchInput.value);
+    });
+
+    // Apply filters
+    applyFiltersBtn.addEventListener('click', () => {
+      activeFilters.teams = [];
+      activeFilters.projects = [];
+      
+      document.querySelectorAll('#teamCheckboxes input[type="checkbox"]:checked').forEach(cb => {
+        activeFilters.teams.push(cb.value);
+      });
+      
+      document.querySelectorAll('#projectCheckboxes input[type="checkbox"]:checked').forEach(cb => {
+        activeFilters.projects.push(cb.value);
+      });
+      
+      renderTables(searchInput.value);
+      advancedFilters.classList.remove('show');
+      filterToggle.textContent = filterToggle.textContent.replace('🔼', '🔽');
+    });
+
+    // Enhanced search with debouncing
+    let searchTimeout;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        renderTables(searchInput.value);
+      }, 300);
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        searchInput.focus();
+      }
+    });
+
+    // Initial render
+    renderTables();
+    generateFilterCheckboxes();
+  </script>
+</body>
+</html>
